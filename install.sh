@@ -179,7 +179,7 @@ install_package  mesa xorg xfce4 opensnitch \
 				 python-qt-material python-pyasn zsh \
 				 wireguard-tools networkmanager \
 				 xfce4-taskmanager xfce4-pulseaudio-plugin \
-				 tmux slock
+				 tmux slock xdg-user-dirs
 
 notify 'Enabling opensnitchd to run at startup'; systemctl enable opensnitchd.service
 notify 'Enabling NetworkManager to run at startup'; systemctl enable NetworkManager.service
@@ -225,11 +225,9 @@ cd ./greet; sudo -u "$username" mkdir ./include && quikc
 notify "Changing shell from /bin/bash to /bin/zsh for user $username"
 sudo -u "$username" chsh -s /bin/zsh
 
-# Make standard directories
-notify "Creating directory '/home/$username/Pictures'"
-sudo -u "$username" mkdir /home/"$username"/Pictures
-notify "Creating directory '/home/$username/Documents'"
-sudo -u "$username" mkdir /home/"$username"/Documents
+# Make standard XDG directories
+notify "Creating full suite of KDG directories in /home/$username"
+sudo -u "$username" xdg-user-dirs-update
 
 # Download wallpaper
 notify "Downloading default wallpaper.. (stored in '/home/$username/Pictures'. You will have to set this manually.)"
@@ -238,6 +236,13 @@ sudo -u "$username" git clone https://github.com/Ramenu/Programming-Language-Tie
 cd ./Programming-Language-Tier-List
 mv ./81679.jpg /home/"$username"/Pictures/wallpaper.jpg
 
+notify 'Setting SearXNG to run at startup..'
+sudo -u "$username" systemctl --user enable searxng
+
 notify "Rebooting system.. you can login as $username now."
-reboot
+read -p 'Do you want to reboot the system? [y/n] ' rebootpc
+
+if [[ "$rebootpc" == "y" ]]; then
+	reboot
+fi
 
