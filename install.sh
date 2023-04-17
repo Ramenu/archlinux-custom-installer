@@ -1,7 +1,5 @@
 #!/bin/bash
 
-#set -e
-
 cyan=14
 blue=12
 green=10
@@ -119,7 +117,7 @@ notify 'Installing essential security components...'
 install_package ufw apparmor
 
 notify 	'	-> Enabling firewall'; systemctl enable ufw.service; ufw enable
-notify  '	-> Enabling AppArmor'; systemctl enable apparmor.service
+notify  '	-> Enabling AppArmor'; systemctl enable apparmor.service; aa-enable
 notify 	'	-> Enabling fstrim.timer'; systemctl enable fstrim.timer
 
 notify 'Changing kernel parameters..'
@@ -129,10 +127,13 @@ notify '	-> Enabling AppArmor as default security model on boot..'
 # Note 'modprobe.blacklist=sp5100_tc0' only needs to be disabled if using a AMD Ryzen CPU.
 # See https://wiki.archlinux.org/title/Improving_performance#Watchdogs for more details.
 if [[ "$encrypted" == "y" ]]; then
-	sed -i "s/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=3 quiet nmi_watchdog=0 nowatchdog modprobe.blacklist=sp5100_tc0 cryptdevice=UUID=${enc_part_uuid}:root root=/dev/mapper/root lsm=landlock,lockdown,yama,integrity,apparmor,bpf/" /etc/default/grub
+	sed -i "s/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=3 quiet nmi_watchdog=0 nowatchdog modprobe.blacklist=sp5100_tc0 cryptdevice=UUID=${enc_part_uuid}:root root=/dev/mapper/root lsm=landlock,lockdown,yama,integrity,apparmor,bpf\"/" /etc/default/grub
 else
-	sed -i "s/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=3 quiet nmi_watchdog=0 nowatchdog modprobe.blacklist=sp5100_tc0 lsm=landlock,lockdown,yama,integrity,apparmor,bpf/" /etc/default/grub
+	sed -i "s/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=3 quiet nmi_watchdog=0 nowatchdog modprobe.blacklist=sp5100_tc0 lsm=landlock,lockdown,yama,integrity,apparmor,bpf\"/" /etc/default/grub
 fi
+
+notify 'Generating new GRUB configuration..'
+grub-mkconfig -o /boot/grub/grub.cfg
 
 notify "Installing 'base-devel' package"; install_package base-devel
 notify 'Installing sudo (lol)..'; install_package sudo
@@ -174,15 +175,17 @@ install_package  mesa xorg xfce4 opensnitch \
 	             keepassxc syncthing firefox pipewire \
 				 pipewire-pulse pipewire-audio wireplumber \
 				 xfce4-genmon-plugin xclip gvfs gvfs-afc \
-				 thunar thunar-volman neovim stow python \
+				 thunar thunar-volman neovim python \
 				 python-qt-material python-pyasn zsh \
-				 wireguard-tools networkmanager
+				 wireguard-tools networkmanager \
+				 xfce4-taskmanager xfce4-pulseaudio-plugin \
+				 tmux slock
 
 notify 'Enabling opensnitchd to run at startup'; systemctl enable opensnitchd.service
 notify 'Enabling NetworkManager to run at startup'; systemctl enable NetworkManager.service
 
 notify 'Installing additional AUR packages (it is highly recommended that you take a look at all the PKGBUILDs before installing!)'
-sudo -u "$username" yay -Syu visual-studio-code-bin searxng-git
+sudo -u "$username" yay -Syu visual-studio-code-bin searxng-git candy-icons-git yaru-gtk-theme
 
 notify 'Setting slock as the default screenlocker..'
 xfconf-query --create -c xfce4-session -p /general/LockCommand -t string -s 'slock'
@@ -194,7 +197,11 @@ notify "Extracting dotfiles archive to /home/$username/dotfiles"
 tar -zxvf ./dotfiles.tar.gz -C "/home/$username"
 notify 'Running initdot.py'
 cd "/home/$username/dotfiles"
-python ./initdot.py
+
+# initdot.py needs to be run as the user and root separately
+sudo -u "$username" python ./initdot.py --overwrite
+python ./initdot.py --overwrite
+
 notify 'Successfully installed dotfiles..'
 cd /tmp
 
@@ -218,8 +225,19 @@ cd ./greet; sudo -u "$username" mkdir ./include && quikc
 notify "Changing shell from /bin/bash to /bin/zsh for user $username"
 sudo -u "$username" chsh -s /bin/zsh
 
+# Make standard directories
+notify "Creating directory '/home/$username/Pictures'"
+sudo -u "$username" mkdir /home/"$username"/Pictures
+notify "Creating directory '/home/$username/Documents'"
+sudo -u "$username" mkdir /home/"$username"/Documents
+
+# Download wallpaper
+notify "Downloading default wallpaper.. (stored in '/home/$username/Pictures'. You will have to set this manually.)"
+cd /tmp
+sudo -u "$username" git clone https://github.com/Ramenu/Programming-Language-Tier-List
+cd ./Programming-Language-Tier-List
+mv ./81679.jpg /home/"$username"/Pictures/wallpaper.jpg
+
 notify "Rebooting system.. you can login as $username now."
 reboot
 
-# TODO: Edit the initdot.py script to not run as root. Only use sudo
-# for folders that need the additional permissions
