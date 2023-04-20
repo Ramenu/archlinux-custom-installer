@@ -127,9 +127,9 @@ notify '	-> Enabling AppArmor as default security model on boot..'
 # Note 'modprobe.blacklist=sp5100_tc0' only needs to be disabled if using a AMD Ryzen CPU.
 # See https://wiki.archlinux.org/title/Improving_performance#Watchdogs for more details.
 if [[ "$encrypted" == "y" ]]; then
-	sed -i "s/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=3 quiet nmi_watchdog=0 nowatchdog modprobe.blacklist=sp5100_tc0 cryptdevice=UUID=${enc_part_uuid}:root root=/dev/mapper/root lsm=landlock,lockdown,yama,integrity,apparmor,bpf\"/" /etc/default/grub
+	sed -i "s/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=3 quiet nmi_watchdog=0 nowatchdog audit=1 modprobe.blacklist=sp5100_tc0 cryptdevice=UUID=${enc_part_uuid}:root root=/dev/mapper/root lsm=landlock,lockdown,yama,integrity,apparmor,bpf\"/" /etc/default/grub
 else
-	sed -i "s/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=3 quiet nmi_watchdog=0 nowatchdog modprobe.blacklist=sp5100_tc0 lsm=landlock,lockdown,yama,integrity,apparmor,bpf\"/" /etc/default/grub
+	sed -i "s/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=3 quiet nmi_watchdog=0 nowatchdog audit=1 modprobe.blacklist=sp5100_tc0 lsm=landlock,lockdown,yama,integrity,apparmor,bpf\"/" /etc/default/grub
 fi
 
 notify 'Generating new GRUB configuration..'
@@ -179,10 +179,11 @@ install_package  mesa xorg xfce4 opensnitch \
 				 python-qt-material python-pyasn zsh \
 				 wireguard-tools networkmanager \
 				 xfce4-taskmanager xfce4-pulseaudio-plugin \
-				 tmux slock xdg-user-dirs
+				 tmux slock xdg-user-dirs audit
 
 notify 'Enabling opensnitchd to run at startup'; systemctl enable opensnitchd.service
 notify 'Enabling NetworkManager to run at startup'; systemctl enable NetworkManager.service
+notify 'Enabling audit framework daemon to run at startup'; systemctl enable auditd.service
 
 notify 'Installing additional AUR packages (it is highly recommended that you take a look at all the PKGBUILDs before installing!)'
 sudo -u "$username" yay -Syu visual-studio-code-bin searxng-git candy-icons-git yaru-gtk-theme
@@ -238,6 +239,9 @@ mv ./81679.jpg /home/"$username"/Pictures/wallpaper.jpg
 
 notify 'Setting SearXNG to run at startup..'
 sudo -u "$username" systemctl --user enable searxng
+
+notify 'Allowing XOrg to run with standard user privileges..'
+echo 'needs_root_rights = no' > /etc/X11/Xwrapper.config
 
 notify "Rebooting system.. you can login as $username now."
 read -p 'Do you want to reboot the system? [y/n] ' rebootpc
