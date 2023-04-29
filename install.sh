@@ -265,7 +265,7 @@ done
 # See: 
 # 	https://www.suse.com/support/kb/doc/?id=000016692 
 # 	https://fedoraproject.org/wiki/Changes/IncreaseVmMaxMapCount
-sysctl -w vm.max_map_count=2147483642
+echo 'vm.max_map_count=2147483642' >> /etc/sysctl.d/99-sysctl.conf
 
 notify "Rebooting system.. you can login as $username now."
 read -p 'Do you want to reboot the system? [y/n] ' rebootpc
