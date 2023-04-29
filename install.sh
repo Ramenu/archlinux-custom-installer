@@ -140,6 +140,7 @@ notify 'Installing sudo (lol)..'; install_package sudo
 notify 'Installing git..'; install_package git
 notify 'Installing yay AUR helper..'
 
+notify "Adding user '$username' as a sudoer"
 echo '%wheel ALL=(ALL:ALL) ALL' >> /etc/sudoers
 sudo -u "$username" git clone https://aur.archlinux.org/yay-bin.git || exit
 
@@ -167,7 +168,14 @@ read -p "Do you have a NVIDIA GPU and do you require proper drivers for it? (Typ
 
 if [[ "$nvidia" == "y" ]]; then
 	notify 'Installing NVIDIA drivers..'
-	install_package nvidia-open
+
+	kernel_info=$(uname -r)
+
+	if [[ "$kernel_info" == *'hardened'* || "$kernel_info" == *'zen'* ]]; then
+		install_package nvidia-open-dkms
+	else
+		install_package nvidia-open
+	fi
 fi
 
 notify 'Installing additional packages..'
@@ -186,7 +194,7 @@ notify 'Enabling NetworkManager to run at startup'; systemctl enable NetworkMana
 notify 'Enabling audit framework daemon to run at startup'; systemctl enable auditd.service
 
 notify 'Installing additional AUR packages (it is highly recommended that you take a look at all the PKGBUILDs before installing!)'
-sudo -u "$username" yay -Syu visual-studio-code-bin searxng-git candy-icons-git yaru-gtk-theme
+sudo -u "$username" yay -Syu searxng-git candy-icons-git
 
 notify 'Setting slock as the default screenlocker..'
 xfconf-query --create -c xfce4-session -p /general/LockCommand -t string -s 'slock'
@@ -242,6 +250,22 @@ sudo -u "$username" systemctl --user enable searxng
 
 notify 'Allowing XOrg to run with standard user privileges..'
 echo 'needs_root_rights = no' > /etc/X11/Xwrapper.config
+
+notify 'Generating and enforcing new AppArmor profiles...'
+cp -r /home/"$username"/dotfiles/apparmor.d/* /etc/apparmor.d
+
+for file in /home/"$username"/dotfiles/apparmor.d/*; do
+	if [[ -f "$file" ]]; then
+		aa-enforce /etc/apparmor.d/$(basename "$file")
+	fi
+done
+
+# This increases the total number of virtual memory allocations a process
+# can make (useful for games or other demanding applications).
+# See: 
+# 	https://www.suse.com/support/kb/doc/?id=000016692 
+# 	https://fedoraproject.org/wiki/Changes/IncreaseVmMaxMapCount
+sysctl -w vm.max_map_count=2147483642
 
 notify "Rebooting system.. you can login as $username now."
 read -p 'Do you want to reboot the system? [y/n] ' rebootpc
