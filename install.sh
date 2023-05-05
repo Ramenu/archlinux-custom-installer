@@ -22,7 +22,7 @@ title() {
 }
 
 install_package() {
-	pacman -Syu --noconfirm "$@" #|| exit 1
+	pacman -Syu --needed --noconfirm "$@" #|| exit 1
 }
 
 notify() {
@@ -135,13 +135,19 @@ fi
 notify 'Generating new GRUB configuration..'
 grub-mkconfig -o /boot/grub/grub.cfg
 
-notify "Installing 'base-devel' package"; install_package base-devel
-notify 'Installing sudo (lol)..'; install_package sudo
+notify 'Installing core Arch Linux development packages..'
+install_package fakeroot gcc make patch which autoconf automake \
+				binutils bison flex m4 libtool groff gzip
+notify 'Installing doas..'; install_package doas
 notify 'Installing git..'; install_package git
-notify 'Installing yay AUR helper..'
+notify 'Installing sudo (will be uninstalled after the installation finishes)..'; install_package sudo
 
-notify "Adding user '$username' as a sudoer"
+notify "Adding user '$username' as a doaser"
+echo 'permit persist :wheel' > /etc/doas.conf
+notify "Adding user '$username' as a sudoer (temporary)"
 echo '%wheel ALL=(ALL:ALL) ALL' >> /etc/sudoers
+
+notify 'Installing yay AUR helper..'
 sudo -u "$username" git clone https://aur.archlinux.org/yay-bin.git || exit
 
 read -p 'View PKGBUILD? [y/n] ' view_pkgbuild
@@ -265,9 +271,16 @@ done
 # See: 
 # 	https://www.suse.com/support/kb/doc/?id=000016692 
 # 	https://fedoraproject.org/wiki/Changes/IncreaseVmMaxMapCount
+notify 'Changing maximum number of virtual memory allocations a process can make to 2147483642'
 echo 'vm.max_map_count=2147483642' >> /etc/sysctl.d/99-sysctl.conf
 
+notify 'Uninstalling sudo..'
+pacman -R sudo --noconfirm
+notify "Symlinking '/usr/bin/doas' to '/usr/bin/sudo'"
+ln -s /usr/bin/doas /usr/bin/sudo
+
 notify "Rebooting system.. you can login as $username now."
+notify 'NOTE: PLEASE REMEMBER TO CHANGE THE ROOT PASSWORD ONCE YOU LOGIN!'
 read -p 'Do you want to reboot the system? [y/n] ' rebootpc
 
 if [[ "$rebootpc" == "y" ]]; then
