@@ -193,7 +193,8 @@ install_package  mesa xorg xfce4 opensnitch \
 				 python-qt-material python-pyasn zsh \
 				 wireguard-tools networkmanager \
 				 xfce4-taskmanager xfce4-pulseaudio-plugin \
-				 tmux slock xdg-user-dirs audit
+				 tmux slock xdg-user-dirs audit bubblewrap \
+				 adwaita-qt5
 
 notify 'Enabling opensnitchd to run at startup'; systemctl enable opensnitchd.service
 notify 'Enabling NetworkManager to run at startup'; systemctl enable NetworkManager.service
@@ -241,7 +242,7 @@ notify "Changing shell from /bin/bash to /bin/zsh for user $username"
 sudo -u "$username" chsh -s /bin/zsh
 
 # Make standard XDG directories
-notify "Creating full suite of KDG directories in /home/$username"
+notify "Creating full suite of XDG directories in /home/$username"
 sudo -u "$username" xdg-user-dirs-update
 
 # Download wallpaper
@@ -260,11 +261,11 @@ echo 'needs_root_rights = no' > /etc/X11/Xwrapper.config
 notify 'Generating and enforcing new AppArmor profiles...'
 cp -r /home/"$username"/dotfiles/apparmor.d/* /etc/apparmor.d
 
-for file in /home/"$username"/dotfiles/apparmor.d/*; do
-	if [[ -f "$file" ]]; then
-		aa-enforce /etc/apparmor.d/$(basename "$file")
-	fi
-done
+#for file in /home/"$username"/dotfiles/apparmor.d/*; do
+#	if [[ -f "$file" ]]; then
+#		aa-enforce "$file"
+#	fi
+#done
 
 # This increases the total number of virtual memory allocations a process
 # can make (useful for games or other demanding applications).
