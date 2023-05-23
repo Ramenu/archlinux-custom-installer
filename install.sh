@@ -193,8 +193,8 @@ install_package  mesa xorg xfce4 opensnitch \
 				 python-qt-material python-pyasn zsh \
 				 wireguard-tools networkmanager \
 				 xfce4-taskmanager xfce4-pulseaudio-plugin \
-				 tmux slock xdg-user-dirs audit bubblewrap \
-				 adwaita-qt5
+				 tmux xdg-user-dirs audit bubblewrap \
+				 adwaita-qt5 xfce4-screensaver
 
 notify 'Enabling opensnitchd to run at startup'; systemctl enable opensnitchd.service
 notify 'Enabling NetworkManager to run at startup'; systemctl enable NetworkManager.service
@@ -203,8 +203,8 @@ notify 'Enabling audit framework daemon to run at startup'; systemctl enable aud
 notify 'Installing additional AUR packages (it is highly recommended that you take a look at all the PKGBUILDs before installing!)'
 sudo -u "$username" yay -Syu searxng-git candy-icons-git
 
-notify 'Setting slock as the default screenlocker..'
-xfconf-query --create -c xfce4-session -p /general/LockCommand -t string -s 'slock'
+#notify 'Setting slock as the default screenlocker..'
+#xfconf-query --create -c xfce4-session -p /general/LockCommand -t string -s 'slock'
 
 cd /tmp
 chown "$username":"$username" ./dotfiles.tar.gz
