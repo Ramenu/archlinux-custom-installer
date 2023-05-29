@@ -138,13 +138,10 @@ grub-mkconfig -o /boot/grub/grub.cfg
 notify 'Installing core Arch Linux development packages..'
 install_package fakeroot gcc make patch which autoconf automake \
 				binutils bison flex m4 libtool groff gzip
-notify 'Installing doas..'; install_package doas
 notify 'Installing git..'; install_package git
-notify 'Installing sudo (will be uninstalled after the installation finishes)..'; install_package sudo
+notify 'Installing sudo..'; install_package sudo
 
-notify "Adding user '$username' as a doaser"
-echo 'permit persist :wheel' > /etc/doas.conf
-notify "Adding user '$username' as a sudoer (temporary)"
+notify "Adding user '$username' as a sudoer"
 echo '%wheel ALL=(ALL:ALL) ALL' >> /etc/sudoers
 
 notify 'Installing yay AUR helper..'
@@ -275,11 +272,6 @@ cp -r /home/"$username"/dotfiles/apparmor.d/* /etc/apparmor.d
 # 	https://fedoraproject.org/wiki/Changes/IncreaseVmMaxMapCount
 notify 'Changing maximum number of virtual memory allocations a process can make to 2147483642'
 echo 'vm.max_map_count=2147483642' >> /etc/sysctl.d/99-sysctl.conf
-
-notify 'Uninstalling sudo..'
-pacman -R sudo --noconfirm
-notify "Symlinking '/usr/bin/doas' to '/usr/bin/sudo'"
-ln -s /usr/bin/doas /usr/bin/sudo
 
 notify "Rebooting system.. you can login as $username now."
 notify 'NOTE: PLEASE REMEMBER TO CHANGE THE ROOT PASSWORD ONCE YOU LOGIN!'
