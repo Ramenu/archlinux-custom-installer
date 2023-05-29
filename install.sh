@@ -199,7 +199,7 @@ notify 'Enabling NetworkManager to run at startup'; systemctl enable NetworkMana
 notify 'Enabling audit framework daemon to run at startup'; systemctl enable auditd.service
 
 notify 'Installing additional AUR packages (it is highly recommended that you take a look at all the PKGBUILDs before installing!)'
-sudo -u "$username" yay -Syu searxng-git candy-icons-git
+sudo -u "$username" yay -Syu visual-studio-code-bin searxng-git candy-icons-git
 
 #notify 'Setting slock as the default screenlocker..'
 #xfconf-query --create -c xfce4-session -p /general/LockCommand -t string -s 'slock'
