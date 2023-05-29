@@ -194,7 +194,8 @@ install_package  mesa xorg xfce4 opensnitch \
 				 wireguard-tools networkmanager \
 				 xfce4-taskmanager xfce4-pulseaudio-plugin \
 				 tmux xdg-user-dirs audit bubblewrap \
-				 adwaita-qt5 xfce4-screensaver
+				 adwaita-qt5 xfce4-screensaver xarchiver \
+				 zathura-pdf-poppler
 
 notify 'Enabling opensnitchd to run at startup'; systemctl enable opensnitchd.service
 notify 'Enabling NetworkManager to run at startup'; systemctl enable NetworkManager.service
