@@ -259,6 +259,9 @@ echo 'needs_root_rights = no' > /etc/X11/Xwrapper.config
 notify 'Generating and enforcing new AppArmor profiles...'
 cp -r /home/"$username"/dotfiles/apparmor.d/* /etc/apparmor.d
 
+notify 'Enabling fstrim.timer..'
+systemctl enable fstrim.timer
+
 #for file in /home/"$username"/dotfiles/apparmor.d/*; do
 #	if [[ -f "$file" ]]; then
 #		aa-enforce "$file"
