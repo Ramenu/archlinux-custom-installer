@@ -101,14 +101,21 @@ if [[ "$is_laptop" == "y" ]]; then
 	systemctl enable tlp.service
 fi
 
+notify 'Installing plymouth (for splash screen)..'
+install_package plymouth
+
 if [[ "$encrypted" == "y" ]]; then
 	echo Enter the UUID of the encrypted partition. You can find it by running 'blkid'
 	read enc_part_uuid
 
 	# https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#Mounting_the_devices
 	echo Configuring mkinitcpio hooks..
-	sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf kms keyboard keymap consolefont block encrypt filesystems fsck)/' /etc/mkinitcpio.conf
+	sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf kms keyboard block encrypt filesystems fsck plymouth)/' /etc/mkinitcpio.conf
 
+	echo Regenerating all initramfs images..
+	mkinitcpio -P
+else
+	sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf kms block filesystems fsck plymouth)/' /etc/mkinitcpio.conf
 	echo Regenerating all initramfs images..
 	mkinitcpio -P
 fi
@@ -123,23 +130,21 @@ notify 	'	-> Enabling fstrim.timer'; systemctl enable fstrim.timer
 notify 'Changing kernel parameters..'
 notify '	-> Disabling watchdog timer..'
 notify '	-> Enabling AppArmor as default security model on boot..'
+notify '    -> Setting up splash screen..'
 
 # Note 'modprobe.blacklist=sp5100_tc0' only needs to be disabled if using a AMD Ryzen CPU.
 # See https://wiki.archlinux.org/title/Improving_performance#Watchdogs for more details.
 if [[ "$encrypted" == "y" ]]; then
-	sed -i "s/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=3 quiet nmi_watchdog=0 nowatchdog audit=1 modprobe.blacklist=sp5100_tc0 cryptdevice=UUID=${enc_part_uuid}:root root=/dev/mapper/root lsm=landlock,lockdown,yama,integrity,apparmor,bpf\"/" /etc/default/grub
+	sed -i "s/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=3 quiet nmi_watchdog=0 nowatchdog audit=1 modprobe.blacklist=sp5100_tc0 cryptdevice=UUID=${enc_part_uuid}:root root=/dev/mapper/root lsm=landlock,lockdown,yama,integrity,apparmor,bpf splash\"/" /etc/default/grub
 else
-	sed -i "s/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=3 quiet nmi_watchdog=0 nowatchdog audit=1 modprobe.blacklist=sp5100_tc0 lsm=landlock,lockdown,yama,integrity,apparmor,bpf\"/" /etc/default/grub
+	sed -i "s/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=3 quiet nmi_watchdog=0 nowatchdog audit=1 modprobe.blacklist=sp5100_tc0 lsm=landlock,lockdown,yama,integrity,apparmor,bpf splash\"/" /etc/default/grub
 fi
 
 notify 'Generating new GRUB configuration..'
 grub-mkconfig -o /boot/grub/grub.cfg
 
-notify 'Installing core Arch Linux development packages..'
-install_package fakeroot gcc make patch which autoconf automake \
-				binutils bison flex m4 libtool groff gzip
+notify "Installing packages from group 'base-devel'.."; install_package base-devel
 notify 'Installing git..'; install_package git
-notify 'Installing sudo..'; install_package sudo
 
 notify "Adding user '$username' as a sudoer"
 echo '%wheel ALL=(ALL:ALL) ALL' >> /etc/sudoers
