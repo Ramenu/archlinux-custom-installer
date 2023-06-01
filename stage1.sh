@@ -96,7 +96,6 @@ ln -sf /mnt/usr/share/zoneinfo/"$timezone" /mnt/etc/localtime
 notify "Installing GRUB on '/mnt/boot'"
 arch-chroot /mnt /bin/bash -c 'grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB'
 
-notify "note: UUID of '$enc' is '$root_uuid'"
 # Note 'modprobe.blacklist=sp5100_tc0' only needs to be disabled if using a AMD Ryzen CPU.
 # See https://wiki.archlinux.org/title/Improving_performance#Watchdogs for more details.
 sed -i "s/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=3 quiet nmi_watchdog=0 nowatchdog audit=1 modprobe.blacklist=sp5100_tc0 cryptdevice=UUID=${root_uuid}:root root=\/dev\/mapper\/root lsm=landlock,lockdown,yama,integrity,apparmor,bpf splash\"/" /mnt/etc/default/grub
