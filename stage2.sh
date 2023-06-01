@@ -34,90 +34,61 @@ notify() {
 	tput sgr0
 }
 
-cd /tmp
-title "Welcome to Ramenu's Post-Arch Install Script"
-
-echo "Before continuing, make sure you read the instructions carefully.
-
-1) Make sure you're running this script as root.
-
-2) This script is intended to work on Arch Linux primarily. There are several
-AUR packages that will be installed during the process. It also assumes that you
-only have the core components installed. While this can work for some Arch
-derivatives, be mindful that something may break.
-
-3) It assumes you have GRUB installed as your bootloader.
-
-4) It assumes you're running this script on a desktop machine.
-
-5) Make sure you have your unencrypted dotfiles archive in the same directory that you're running this script in.
-
-6) This script and all of the required files must be executed and placed in '/tmp'.
-
-7) Make sure you have your '.git-credentials' file stored in '/tmp'.
-
-8) This script is intended to be used by me only. 
-
-9) I am not responsible for any damages that this script might cause to your system, wellbeing, or family. Good luck.
-
-I acknowledge that I have read these instructions. [y/n]"
-read resp
-
-if [[ "$resp" != "y" ]]; then
-	echo Aborting installation
-	exit
+INSTALL_DIR='/home/tmp'
+if [[ ! -f "$INSTALL_DIR/dotfiles.tar.gz" ]]; then
+	echo "error: unable to find '$INSTALL_DIR/dotfiles.tar.gz'. Aborting installation"
+	exit 1
 fi
 
+if [[ ! -f "$INSTALL_DIR/.git-credentials" ]]; then
+	echo "error: unable to find '$INSTALL_DIR/.git-credentials'. Aborting installation"
+	exit 1
+fi
+
+notify "Generating '/etc/adjtime'.."
+hwclock --systohc
+notify 'Generating locales..'
+locale-gen
+echo 'LANG=en_US.UTF-8' > /etc/locale.conf
+read -p "What do you want this computer's hostname to be? " hostname
+echo "$hostname" > /etc/hostname
+
+echo -e 'Do you have a Intel or AMD CPU?\n1) AMD\n2) Intel'
+read processor_family
+
+if [[ "$processor_family" -eq 1 ]]; then
+	install_package amd-ucode
+elif [[ "$processor_family" -eq 2 ]]; then
+	install_package intel-ucode
+else
+	echo "error: invalid response. Aborting installation.."
+	exit 1
+fi
+
+notify "Installing GRUB on '/mnt/boot'"
+grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+
+grub-mkconfig -o /boot/grub/grub.cfg
+
+# https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#Mounting_the_devices
+notify 'Configuring mkinitcpio hooks..'
+sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf kms keyboard block encrypt filesystems fsck plymouth)/' /etc/mkinitcpio.conf
+mkinitcpio -P
+
+cd $INSTALL_DIR
 tput sgr0
 
-if [[ "$(pwd)" != "/tmp" ]]; then
-	echo error: script must be run in '/tmp'. Aborting installation
-	exit 1
-fi
-
-if [[ ! -f '/tmp/dotfiles.tar.gz' ]]; then
-	echo error: unable to find '/tmp/dotfiles.tar.gz'. Aborting installation
-	exit 1
-fi
-
-if [[ ! -f '/tmp/.git-credentials' ]]; then
-	echo error: unable to find '/tmp/.git-credentials'. Aborting installation
-	exit 1
-fi
-
 read -p 'Is your device a laptop? [y/n] ' is_laptop
-read -p 'Is your Arch Linux installation on a LUKS partition? [y/n] ' encrypted
-echo What do you want your account\'s username to be?
-read username
+read -p "What do you want your account's username to be? " username
 
 echo "Creating new user '$username'"
 useradd -m -G wheel -s /bin/bash "$username"
 passwd "$username"
 
-echo "$is_laptop"
 if [[ "$is_laptop" == "y" ]]; then
 	notify 'Installing TLP (for optimizing battery usage)..'
 	install_package tlp
 	systemctl enable tlp.service
-fi
-
-notify 'Installing plymouth (for splash screen)..'
-install_package plymouth
-
-if [[ "$encrypted" == "y" ]]; then
-	echo Enter the UUID of the encrypted partition. You can find it by running 'blkid'
-	read enc_part_uuid
-
-	# https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#Mounting_the_devices
-	echo Configuring mkinitcpio hooks..
-	sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf kms keyboard block encrypt filesystems fsck plymouth)/' /etc/mkinitcpio.conf
-
-	echo Regenerating all initramfs images..
-	mkinitcpio -P
-else
-	sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf kms block filesystems fsck plymouth)/' /etc/mkinitcpio.conf
-	echo Regenerating all initramfs images..
-	mkinitcpio -P
 fi
 
 notify 'Installing essential security components...'
@@ -130,18 +101,8 @@ notify 	'	-> Enabling fstrim.timer'; systemctl enable fstrim.timer
 notify 'Changing kernel parameters..'
 notify '	-> Disabling watchdog timer..'
 notify '	-> Enabling AppArmor as default security model on boot..'
-notify '    -> Setting up splash screen..'
+notify '     -> Setting up splash screen..'
 
-# Note 'modprobe.blacklist=sp5100_tc0' only needs to be disabled if using a AMD Ryzen CPU.
-# See https://wiki.archlinux.org/title/Improving_performance#Watchdogs for more details.
-if [[ "$encrypted" == "y" ]]; then
-	sed -i "s/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=3 quiet nmi_watchdog=0 nowatchdog audit=1 modprobe.blacklist=sp5100_tc0 cryptdevice=UUID=${enc_part_uuid}:root root=/dev/mapper/root lsm=landlock,lockdown,yama,integrity,apparmor,bpf splash\"/" /etc/default/grub
-else
-	sed -i "s/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=3 quiet nmi_watchdog=0 nowatchdog audit=1 modprobe.blacklist=sp5100_tc0 lsm=landlock,lockdown,yama,integrity,apparmor,bpf splash\"/" /etc/default/grub
-fi
-
-notify 'Generating new GRUB configuration..'
-grub-mkconfig -o /boot/grub/grub.cfg
 
 notify "Installing packages from group 'base-devel'.."; install_package base-devel
 notify 'Installing git..'; install_package git
@@ -149,6 +110,7 @@ notify 'Installing git..'; install_package git
 notify "Adding user '$username' as a sudoer"
 echo '%wheel ALL=(ALL:ALL) ALL' >> /etc/sudoers
 
+cd /tmp
 notify 'Installing yay AUR helper..'
 sudo -u "$username" git clone https://aur.archlinux.org/yay-bin.git || exit
 
@@ -193,8 +155,7 @@ install_package  mesa xorg xfce4 opensnitch \
 				 xfce4-genmon-plugin xclip gvfs gvfs-afc \
 				 thunar thunar-volman neovim python \
 				 python-qt-material python-pyasn zsh \
-				 wireguard-tools networkmanager \
-				 xfce4-taskmanager xfce4-pulseaudio-plugin \
+				 wireguard-tools xfce4-taskmanager xfce4-pulseaudio-plugin \
 				 tmux xdg-user-dirs audit bubblewrap \
 				 adwaita-qt5 xfce4-screensaver xarchiver \
 				 zathura-pdf-poppler
@@ -204,12 +165,12 @@ notify 'Enabling NetworkManager to run at startup'; systemctl enable NetworkMana
 notify 'Enabling audit framework daemon to run at startup'; systemctl enable auditd.service
 
 notify 'Installing additional AUR packages (it is highly recommended that you take a look at all the PKGBUILDs before installing!)'
-sudo -u "$username" yay -Syu visual-studio-code-bin searxng-git candy-icons-git
+sudo -u "$username" yay -Syu --needed visual-studio-code-bin searxng-git candy-icons-git
 
 #notify 'Setting slock as the default screenlocker..'
 #xfconf-query --create -c xfce4-session -p /general/LockCommand -t string -s 'slock'
 
-cd /tmp
+cd $INSTALL_DIR
 chown "$username":"$username" ./dotfiles.tar.gz
 chown "$username":"$username" ./.git-credentials
 notify "Extracting dotfiles archive to /home/$username/dotfiles"
@@ -222,7 +183,7 @@ sudo -u "$username" python ./initdot.py --overwrite
 python ./initdot.py --overwrite
 
 notify 'Successfully installed dotfiles..'
-cd /tmp
+cd $INSTALL_DIR
 
 notify "Creating '/home/$username/projects'.."
 sudo -u "$username" mkdir "/home/$username/projects"
@@ -234,7 +195,7 @@ pacman -Syu paccheck-git quikc
 # Save Git credentials so the user doesn't have to automatically type
 # in their username and password every time
 sudo -u "$username" git config --global credential.helper store
-sudo -u "$username" cp /tmp/.git-credentials "/home/$username"
+sudo -u "$username" cp $INSTALL_DIR/.git-credentials "/home/$username"
 notify 'Cloning essential repositories..'
 sudo -u "$username" git clone https://github.com/Ramenu/scripts || exit
 sudo -u "$username" git clone https://github.com/Ramenu/greet || exit
@@ -284,6 +245,10 @@ echo 'vm.max_map_count=2147483642' >> /etc/sysctl.d/99-sysctl.conf
 notify "Rebooting system.. you can login as $username now."
 notify 'NOTE: PLEASE REMEMBER TO CHANGE THE ROOT PASSWORD ONCE YOU LOGIN!'
 read -p 'Do you want to reboot the system? [y/n] ' rebootpc
+
+notify "Removing all files from installation directory: '$INSTALL_DIR'"
+cd /
+rm -rf "$INSTALL_DIR"
 
 if [[ "$rebootpc" == "y" ]]; then
 	reboot
