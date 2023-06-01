@@ -72,7 +72,7 @@ grub-mkconfig -o /boot/grub/grub.cfg
 
 # https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#Mounting_the_devices
 notify 'Configuring mkinitcpio hooks..'
-sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf kms keyboard block encrypt filesystems fsck plymouth)/' /etc/mkinitcpio.conf
+sed -i 's/^HOOKS=.*/HOOKS=(base udev plymouth autodetect modconf kms keyboard block encrypt filesystems fsck)/' /etc/mkinitcpio.conf
 mkinitcpio -P
 
 cd $INSTALL_DIR
