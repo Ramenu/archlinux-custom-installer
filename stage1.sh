@@ -52,7 +52,8 @@ fi
 success 'Found ./.git-credentials'
 
 read -p "Before continuing, this installation script assumes you've created your /boot and / partitions.\
-It also assumes that the machine has functional internet access. If you've done both of these things, \
+It also assumes that the machine has functional internet access, and that secure boot is disabled \
+(you can re-enable it after the installation). If you've done all of these things, \
 type 'y' to continue with the installation [y/n] " confirm_install
 
 if [[ "$confirm_install" != 'y' ]]; then
@@ -94,6 +95,16 @@ if [[ $(blkid "$enc") != *"UUID=\"${root_uuid}\""* ]]; then
 	exit 1
 fi
 
+# Check CPU vendor
+cpu_vendor=$(lscpu | grep 'Vendor ID:' | awk '{print $3}')
+if [[ "$cpu_vendor" == 'AuthenticAMD' ]]; then
+	notify 'Detected CPU vendor: AMD'
+	microcode_pkg='amd-ucode'
+else
+	echo 'error: unrecognized CPU vendor. Aborting installation..'
+	exit 1
+fi
+
 notify 'Opening the encrypted root partition. Please enter your password.'
 cryptsetup open "$enc" $(basename "$root")
 
@@ -102,13 +113,13 @@ mkfs.ext4 "$root"
 notify "Mounting '$root' on '/mnt'"
 mount /dev/mapper/root /mnt
 
-notify "Mounting '$efi' on '/mnt/boot'"
-mount --mkdir "$efi" /mnt/boot
+notify "Mounting '$efi' on '/mnt/efi'"
+mount --mkdir "$efi" /mnt/efi
 
-notify "Installing Arch Linux on '/mnt'"
-pacstrap -K /mnt base linux linux-firmware plymouth networkmanager grub efibootmgr
+notify "Installing Arch Linux on '/mnt'.."
+pacstrap -K /mnt base linux linux-firmware plymouth networkmanager sbctl efibootmgr $microcode_pkg
 notify 'Generating fstab file..'
-genfstab -U /mnt >> /mnt/etc/fstab
+genfstab -U /mnt > /mnt/etc/fstab
 
 notify 'Setting timezone..'
 timezone=$(curl --fail 'https://ipapi.co/timezone' || exit)
@@ -119,13 +130,38 @@ fi
 
 ln -sf /mnt/usr/share/zoneinfo/"$timezone" /mnt/etc/localtime
 
-notify "Installing GRUB on '/mnt/boot'"
-arch-chroot /mnt /bin/bash -c 'grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB'
-
 # Note 'modprobe.blacklist=sp5100_tc0' only needs to be disabled if using a AMD Ryzen CPU.
 # See https://wiki.archlinux.org/title/Improving_performance#Watchdogs for more details.
-sed -i "s/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"loglevel=3 quiet nmi_watchdog=0 nowatchdog audit=1 modprobe.blacklist=sp5100_tc0 cryptdevice=UUID=${root_uuid}:root root=\/dev\/mapper\/root lsm=landlock,lockdown,yama,integrity,apparmor,bpf splash\"/" /mnt/etc/default/grub
-notify 'Generating new GRUB configuration file..'
+notify 'Modifying kernel parameters..'
+echo "BOOT_IMAGE=loglevel=3 quiet nmi_watchdog=0 nowatchdog audit=1 modprobe.blacklist=sp5100_tc0 cryptdevice=UUID=${root_uuid}:root root=/dev/mapper/root lsm=landlock,lockdown,yama,integrity,apparmor,bpf splash" > /mnt/etc/kernel/cmdline
+echo "Whenever modifying the kernel's parameters be sure to run:
+	'sbctl generate-bundles --sign'
+
+Otherwise the changes will not be saved!" > /mnt/etc/kernel/READ_BEFORE_EDITING_CMDLINE
+
+mkdir -p /mnt/efi/EFI/Linux
+notify 'Signing kernel and microcode images for secure boot..'
+if [[ "$cpu_vendor" == 'AuthenticAMD' ]]; then
+	arch-chroot /mnt /bin/bash -c 'sbctl bundle -s -a /boot/amd-ucode.img -k /boot/vmlinuz-linux -f /boot/initramfs-linux.img -c /etc/kernel/cmdline /efi/EFI/Linux/ArchBundle.efi'
+else
+	echo 'error: Unknown CPU vendor. Aborting installation..'
+	exit 1
+fi
+arch-chroot /mnt /bin/bash -c 'sbctl create-keys'
+arch-chroot /mnt /bin/bash -c 'sbctl generate-bundles --sign'
+arch-chroot /mnt /bin/bash -c 'sbctl enroll-keys --microsoft'
+
+part_num="${efi: -1}"
+
+notify 'Creating boot menu entry..'
+# NVMEs have different naming conventions than the other SSDs and HDDs
+# for some reason, so we have to account for that
+if [[ "$efi" == 'nvme0n1'* ]]; then
+	arch-chroot /mnt /bin/bash -c "efibootmgr --create --disk /dev/nvme0n1 --part $part_num --label \"Arch Linux\" --loader /EFI/Linux/ArchBundle.efi"
+else
+	main_dev="${efi:0:-1}"
+	arch-chroot /mnt /bin/bash -c "efibootmgr --create --disk $main_dev --part $part_num --label \"Arch Linux\" --loader /EFI/Linux/ArchBundle.efi"
+fi
 
 INSTALL_DIR='/mnt/home/tmp'
 notify "Creating temporary directory '$INSTALL_DIR'.."
