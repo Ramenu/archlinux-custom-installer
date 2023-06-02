@@ -1,5 +1,13 @@
 #!/bin/bash
 
+cyan=14
+blue=12
+green=10
+red=9
+yellow=11
+white=15
+pink=13
+
 bolden() {
 	tput bold
 	echo -e "$1"
@@ -15,15 +23,33 @@ notify() {
 	tput sgr0
 }
 
-if [[ ! -f './dotfiles.tar.gz' ]]; then
-	echo error: unable to find './dotfiles.tar.gz'. Aborting installation
+success() {
+	tput bold
+	echo '[ ' | tr -d '\n'
+	tput setaf "$green"
+	echo '  OK  ' | tr -d '\n'
+	tput setaf "$white"
+	echo " ] $1"
+	tput sgr0
+}
+
+if [[ ! -d '/sys/firmware/efi' ]]; then
+	echo 'error: Cannot run installation script because this device does not support UEFI. Aborting installation..'
 	exit 1
 fi
+success 'Device supports UEFI'
+
+if [[ ! -f './dotfiles.tar.gz' ]]; then
+	echo 'error: unable to find './dotfiles.tar.gz'. Aborting installation..'
+	exit 1
+fi
+success 'Found ./dotfiles.tar.gz'
 
 if [[ ! -f './.git-credentials' ]]; then
-	echo error: unable to find './.git-credentials'. Aborting installation
+	echo 'error: unable to find './.git-credentials'. Aborting installation..'
 	exit 1
 fi
+success 'Found ./.git-credentials'
 
 read -p "Before continuing, this installation script assumes you've created your /boot and / partitions.\
 It also assumes that the machine has functional internet access. If you've done both of these things, \
@@ -94,7 +120,7 @@ fi
 ln -sf /mnt/usr/share/zoneinfo/"$timezone" /mnt/etc/localtime
 
 notify "Installing GRUB on '/mnt/boot'"
-arch-chroot /mnt /bin/bash -c 'grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB'
+arch-chroot /mnt /bin/bash -c 'grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB'
 
 # Note 'modprobe.blacklist=sp5100_tc0' only needs to be disabled if using a AMD Ryzen CPU.
 # See https://wiki.archlinux.org/title/Improving_performance#Watchdogs for more details.
