@@ -183,6 +183,8 @@ sudo -u "$username" cp $INSTALL_DIR/.git-credentials "/home/$username"
 notify 'Cloning essential repositories..'
 sudo -u "$username" git clone https://github.com/Ramenu/scripts || exit
 sudo -u "$username" git clone https://github.com/Ramenu/greet || exit
+sudo -u "$username" git clone https://github.com/Ramenu/updpkgver || exit
+sudo -u "$username" git clone https://github.com/Ramenu/rm-extra || exit
 notify "Compiling 'greet'.."
 cd ./greet; sudo -u "$username" mkdir ./include && quikc
 
