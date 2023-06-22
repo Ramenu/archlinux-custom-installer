@@ -127,7 +127,7 @@ if [[ "$nvidia" == "y" ]]; then
 	if [[ "$kernel_info" == *'hardened'* || "$kernel_info" == *'zen'* ]]; then
 		install_package nvidia-open-dkms
 	else
-		install_package nvidia-open
+		install_package nvidia-open nvidia-lts
 	fi
 fi
 

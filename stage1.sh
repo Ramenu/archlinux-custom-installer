@@ -117,7 +117,7 @@ notify "Mounting '$efi' on '/mnt/efi'"
 mount --mkdir "$efi" /mnt/efi
 
 notify "Installing Arch Linux on '/mnt'.."
-pacstrap -K /mnt base linux linux-firmware plymouth networkmanager sbctl efibootmgr $microcode_pkg
+pacstrap -K /mnt base linux linux-lts linux-firmware plymouth networkmanager sbctl efibootmgr $microcode_pkg
 notify 'Generating fstab file..'
 genfstab -U /mnt > /mnt/etc/fstab
 
@@ -142,7 +142,8 @@ Otherwise the changes will not be saved!" > /mnt/etc/kernel/READ_BEFORE_EDITING_
 mkdir -p /mnt/efi/EFI/Linux
 notify 'Signing kernel and microcode images for secure boot..'
 if [[ "$cpu_vendor" == 'AuthenticAMD' ]]; then
-	arch-chroot /mnt /bin/bash -c 'sbctl bundle -s -a /boot/amd-ucode.img -k /boot/vmlinuz-linux -f /boot/initramfs-linux.img -c /etc/kernel/cmdline /efi/EFI/Linux/ArchBundle.efi'
+	arch-chroot /mnt /bin/bash -c 'sbctl bundle -s -a /boot/amd-ucode.img -k /boot/vmlinuz-linux -f /boot/initramfs-linux.img -c /etc/kernel/cmdline /efi/EFI/Linux/Arch.efi'
+	arch-chroot /mnt /bin/bash -c 'sbctl bundle -s -a /boot/amd-ucode.img -k /boot/vmlinuz-linux-lts -f /boot/initramfs-linux-lts.img -c /etc/kernel/cmdline /efi/EFI/Linux/ArchLTS.efi'
 else
 	echo 'error: Unknown CPU vendor. Aborting installation..'
 	exit 1
@@ -157,10 +158,12 @@ notify 'Creating boot menu entry..'
 # NVMEs have different naming conventions than the other SSDs and HDDs
 # for some reason, so we have to account for that
 if [[ "$efi" == 'nvme0n1'* ]]; then
-	arch-chroot /mnt /bin/bash -c "efibootmgr --create --disk /dev/nvme0n1 --part $part_num --label \"Arch Linux\" --loader /EFI/Linux/ArchBundle.efi"
+	arch-chroot /mnt /bin/bash -c "efibootmgr --create --disk /dev/nvme0n1 --part $part_num --label \"Arch Linux\" --loader /EFI/Linux/Arch.efi"
+	arch-chroot /mnt /bin/bash -c "efibootmgr --create --disk /dev/nvme0n1 --part $part_num --label \"Arch Linux LTS\" --loader /EFI/Linux/ArchLTS.efi"
 else
 	main_dev="${efi:0:-1}"
-	arch-chroot /mnt /bin/bash -c "efibootmgr --create --disk $main_dev --part $part_num --label \"Arch Linux\" --loader /EFI/Linux/ArchBundle.efi"
+	arch-chroot /mnt /bin/bash -c "efibootmgr --create --disk $main_dev --part $part_num --label \"Arch Linux\" --loader /EFI/Linux/Arch.efi"
+	arch-chroot /mnt /bin/bash -c "efibootmgr --create --disk $main_dev --part $part_num --label \"Arch Linux LTS\" --loader /EFI/Linux/ArchLTS.efi"
 fi
 
 INSTALL_DIR='/mnt/home/tmp'
