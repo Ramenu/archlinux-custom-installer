@@ -17,7 +17,7 @@ bolden() {
 notify() {
 	tput bold
 	tput setaf "$blue"
-	echo ':: ' | tr -d '\n'
+	echo ' -> ' | tr -d '\n'
 	tput setaf "$white"
 	echo "$1"
 	tput sgr0

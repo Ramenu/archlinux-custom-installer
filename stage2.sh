@@ -22,13 +22,13 @@ title() {
 }
 
 install_package() {
-	pacman -Syu --needed --noconfirm "$@" #|| exit 1
+	pacman -Syu --color always --needed --noconfirm "$@" #|| exit 1
 }
 
 notify() {
 	tput bold
-	tput setaf "$blue"
-	echo ':: ' | tr -d '\n'
+	tput setaf "$yellow"
+	echo ' -> ' | tr -d '\n'
 	tput setaf "$white"
 	echo "$1"
 	tput sgr0
@@ -50,8 +50,10 @@ hwclock --systohc
 notify 'Generating locales..'
 locale-gen
 echo 'LANG=en_US.UTF-8' > /etc/locale.conf
-read -p "What do you want this computer's hostname to be? " hostname
-echo "$hostname" > /etc/hostname
+if [[ ! -f '/etc/hostname' ]]; then
+	read -p "What do you want this computer's hostname to be? " hostname
+	echo "$hostname" > /etc/hostname
+fi
 
 # https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#Mounting_the_devices
 notify 'Configuring mkinitcpio hooks..'
@@ -78,7 +80,7 @@ notify 'Installing essential security components...'
 install_package ufw apparmor
 
 notify 	'	-> Enabling firewall'; systemctl enable ufw.service; ufw enable
-notify  '	-> Enabling AppArmor'; systemctl enable apparmor.service; aa-enable
+notify  '	-> Enabling AppArmor'; systemctl enable apparmor.service
 notify 	'	-> Enabling fstrim.timer'; systemctl enable fstrim.timer
 
 notify 'Changing kernel parameters..'
@@ -95,12 +97,13 @@ echo '%wheel ALL=(ALL:ALL) ALL' >> /etc/sudoers
 
 cd /tmp
 notify 'Installing yay AUR helper..'
-sudo -u "$username" git clone https://aur.archlinux.org/yay-bin.git || exit
+yay_pkg='yay-bin'
+sudo -u "$username" git clone https://aur.archlinux.org/$yay_pkg.git || exit
 
 read -p 'View PKGBUILD? [y/n] ' view_pkgbuild
 
 if [[ "$view_pkgbuild" == "y" ]]; then
-	less ./yay-bin/PKGBUILD
+	less ./$yay_pkg/PKGBUILD
 	read -p 'Proceed with installation? [y/n] ' install_yay
 
 	if [[ "$install_yay" != "y" ]]; then
@@ -109,15 +112,15 @@ if [[ "$view_pkgbuild" == "y" ]]; then
 	fi
 fi
 
-cd ./yay-bin && sudo -u "$username" makepkg -si
+cd ./$yay_pkg && sudo -u "$username" makepkg -si --needed
 cd ..
-rm -r ./yay-bin
+rm -rf ./$yay_pkg
 
 # https://wiki.archlinux.org/title/PC_speaker
 notify 'Disabling annoyingly loud PC speaker..'
 echo -e 'blacklist pcspkr\nblacklist snd_pcsp' > /etc/modprobe.d/nobeep.conf
 
-read -p "Do you have a NVIDIA GPU and do you require proper drivers for it? (Type 'n' if on a virtual machine) [y/n] " nvidia
+read -p "Do you have a NVIDIA GPU? (Type 'n' if on a virtual machine) [y/n] " nvidia
 
 if [[ "$nvidia" == "y" ]]; then
 	notify 'Installing NVIDIA drivers..'
@@ -148,11 +151,6 @@ notify 'Enabling opensnitchd to run at startup'; systemctl enable opensnitchd.se
 notify 'Enabling NetworkManager to run at startup'; systemctl enable NetworkManager.service
 notify 'Enabling audit framework daemon to run at startup'; systemctl enable auditd.service
 
-notify 'Installing additional AUR packages (it is highly recommended that you take a look at all the PKGBUILDs before installing!)'
-sudo -u "$username" yay -Syu --needed visual-studio-code-bin searxng-git candy-icons-git
-
-#notify 'Setting slock as the default screenlocker..'
-#xfconf-query --create -c xfce4-session -p /general/LockCommand -t string -s 'slock'
 
 cd $INSTALL_DIR
 chown "$username":"$username" ./dotfiles.tar.gz
@@ -169,12 +167,12 @@ python ./initdot.py --overwrite
 notify 'Successfully installed dotfiles..'
 cd $INSTALL_DIR
 
+notify 'Installing additional AUR packages (it is highly recommended that you take a look at all the PKGBUILDs before installing!)'
+sudo -u "$username" yay -Syu --color always --needed visual-studio-code-bin searxng-git candy-icons-git
+
 notify "Creating '/home/$username/projects'.."
 sudo -u "$username" mkdir "/home/$username/projects"
 cd "/home/$username/projects"
-
-notify "Installing additional packages from the 'rm-extra' repository.."
-pacman -Syu paccheck-git quikc
 
 # Save Git credentials so the user doesn't have to automatically type
 # in their username and password every time
@@ -184,7 +182,6 @@ notify 'Cloning essential repositories..'
 sudo -u "$username" git clone https://github.com/Ramenu/scripts || exit
 sudo -u "$username" git clone https://github.com/Ramenu/greet || exit
 sudo -u "$username" git clone https://github.com/Ramenu/updpkgver || exit
-sudo -u "$username" git clone https://github.com/Ramenu/rm-extra || exit
 notify "Compiling 'greet'.."
 cd ./greet; sudo -u "$username" mkdir ./include && quikc
 
@@ -196,7 +193,7 @@ notify "Creating full suite of XDG directories in /home/$username"
 sudo -u "$username" xdg-user-dirs-update
 
 # Download wallpaper
-notify "Downloading default wallpaper.. (stored in '/home/$username/Pictures'. You will have to set this manually.)"
+notify "Downloading default wallpaper.. (stored in '/home/$username/Pictures'. You will have to set this manually)"
 cd /tmp
 sudo -u "$username" git clone https://github.com/Ramenu/Programming-Language-Tier-List
 cd ./Programming-Language-Tier-List
@@ -205,20 +202,11 @@ mv ./81679.jpg /home/"$username"/Pictures/wallpaper.jpg
 notify 'Setting SearXNG to run at startup..'
 sudo -u "$username" systemctl --user enable searxng
 
-notify 'Allowing XOrg to run with standard user privileges..'
+notify 'Allowing X to run with standard user privileges..'
 echo 'needs_root_rights = no' > /etc/X11/Xwrapper.config
 
 notify 'Generating and enforcing new AppArmor profiles...'
 cp -r /home/"$username"/dotfiles/apparmor.d/* /etc/apparmor.d
-
-notify 'Enabling fstrim.timer..'
-systemctl enable fstrim.timer
-
-#for file in /home/"$username"/dotfiles/apparmor.d/*; do
-#	if [[ -f "$file" ]]; then
-#		aa-enforce "$file"
-#	fi
-#done
 
 # This increases the total number of virtual memory allocations a process
 # can make (useful for games or other demanding applications).
