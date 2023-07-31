@@ -77,10 +77,8 @@ fi
 
 efi_fs_type=$(blkid "$efi" | awk '{print $4}')
 if [[ "$efi_fs_type" != 'TYPE="vfat"' ]]; then
-	echo "error: '$efi' is not a valid EFI partition. In order to make it so type: "
-	bolden "		mkfs.fat -F32 $efi"
-	echo 'Be sure to erase everything in the partition before doing this!'
-	exit 1
+	notify "Setting $efi as a FAT32 partition.."
+	mkfs.fat -F32 "$efi"
 fi
 
 root='/dev/mapper/root'
@@ -129,6 +127,10 @@ if [[ ! -e "/mnt/usr/share/zoneinfo/$timezone" ]]; then
 fi
 
 ln -sf /mnt/usr/share/zoneinfo/"$timezone" /mnt/etc/localtime
+
+# https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#Mounting_the_devices
+notify 'Configuring mkinitcpio hooks..'
+sed -i 's/^HOOKS=.*/HOOKS=(base udev plymouth autodetect modconf kms keyboard block encrypt filesystems fsck)/' /mnt/etc/mkinitcpio.conf
 
 # Note 'modprobe.blacklist=sp5100_tc0' only needs to be disabled if using a AMD Ryzen CPU.
 # See https://wiki.archlinux.org/title/Improving_performance#Watchdogs for more details.

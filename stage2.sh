@@ -55,11 +55,6 @@ if [[ ! -f '/etc/hostname' ]]; then
 	echo "$hostname" > /etc/hostname
 fi
 
-# https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#Mounting_the_devices
-notify 'Configuring mkinitcpio hooks..'
-sed -i 's/^HOOKS=.*/HOOKS=(base udev plymouth autodetect modconf kms keyboard block encrypt filesystems fsck)/' /etc/mkinitcpio.conf
-mkinitcpio -P
-
 cd $INSTALL_DIR
 tput sgr0
 
@@ -95,26 +90,29 @@ notify 'Installing git..'; install_package git
 notify "Adding user '$username' as a sudoer"
 echo '%wheel ALL=(ALL:ALL) ALL' >> /etc/sudoers
 
-cd /tmp
-notify 'Installing yay AUR helper..'
-yay_pkg='yay-bin'
-sudo -u "$username" git clone https://aur.archlinux.org/$yay_pkg.git || exit
+yay_pkg_dir='./yay-bin'
+yay_pkg="$(basename $yay_pkg_dir)"
+if ! pacman -Q $yay_pkg > /dev/null 2>&1; then
+	cd /tmp
+	notify 'Installing yay AUR helper..'
+	sudo -u "$username" git clone https://aur.archlinux.org/$yay_pkg.git || exit
 
-read -p 'View PKGBUILD? [y/n] ' view_pkgbuild
+	read -p 'View PKGBUILD? [y/n] ' view_pkgbuild
 
-if [[ "$view_pkgbuild" == "y" ]]; then
-	less ./$yay_pkg/PKGBUILD
-	read -p 'Proceed with installation? [y/n] ' install_yay
+	if [[ "$view_pkgbuild" == "y" ]]; then
+		less $yay_pkg_dir/PKGBUILD
+		read -p 'Proceed with installation? [y/n] ' install_yay
 
-	if [[ "$install_yay" != "y" ]]; then
-		echo 'Aborting installation'
-		exit 1
+		if [[ "$install_yay" != "y" ]]; then
+			echo 'Aborting installation'
+			exit 1
+		fi
 	fi
-fi
 
-cd ./$yay_pkg && sudo -u "$username" makepkg -si --needed
-cd ..
-rm -rf ./$yay_pkg
+	cd $yay_pkg_dir && sudo -u "$username" makepkg -si --needed
+	cd ..
+	rm -rf $yay_pkg_dir
+fi
 
 # https://wiki.archlinux.org/title/PC_speaker
 notify 'Disabling annoyingly loud PC speaker..'
@@ -124,14 +122,7 @@ read -p "Do you have a NVIDIA GPU? (Type 'n' if on a virtual machine) [y/n] " nv
 
 if [[ "$nvidia" == "y" ]]; then
 	notify 'Installing NVIDIA drivers..'
-
-	kernel_info=$(uname -r)
-
-	if [[ "$kernel_info" == *'hardened'* || "$kernel_info" == *'zen'* ]]; then
-		install_package nvidia-open-dkms
-	else
-		install_package nvidia-open nvidia-lts
-	fi
+	install_package nvidia-open nvidia-lts
 fi
 
 notify 'Installing additional packages..'
@@ -151,12 +142,15 @@ notify 'Enabling opensnitchd to run at startup'; systemctl enable opensnitchd.se
 notify 'Enabling NetworkManager to run at startup'; systemctl enable NetworkManager.service
 notify 'Enabling audit framework daemon to run at startup'; systemctl enable auditd.service
 
+notify 'Installing additional AUR packages (it is highly recommended that you take a look at all the PKGBUILDs before installing!)'
+sudo -u "$username" yay -Syu --color always --needed visual-studio-code-bin searxng-git candy-icons-git quikc-git
 
 cd $INSTALL_DIR
 chown "$username":"$username" ./dotfiles.tar.gz
 chown "$username":"$username" ./.git-credentials
 notify "Extracting dotfiles archive to /home/$username/dotfiles"
-tar -zxvf ./dotfiles.tar.gz -C "/home/$username"
+mkdir "/home/$username/dotfiles"
+tar -zxvf ./dotfiles.tar.gz -C "/home/$username/dotfiles"
 notify 'Running initdot.py'
 cd "/home/$username/dotfiles"
 
@@ -167,8 +161,6 @@ python ./initdot.py --overwrite
 notify 'Successfully installed dotfiles..'
 cd $INSTALL_DIR
 
-notify 'Installing additional AUR packages (it is highly recommended that you take a look at all the PKGBUILDs before installing!)'
-sudo -u "$username" yay -Syu --color always --needed visual-studio-code-bin searxng-git candy-icons-git
 
 notify "Creating '/home/$username/projects'.."
 sudo -u "$username" mkdir "/home/$username/projects"
