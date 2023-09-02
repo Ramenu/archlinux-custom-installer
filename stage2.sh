@@ -205,11 +205,13 @@ cp -r /home/"$username"/dotfiles/apparmor.d/* /etc/apparmor.d
 # See: 
 # 	https://www.suse.com/support/kb/doc/?id=000016692 
 # 	https://fedoraproject.org/wiki/Changes/IncreaseVmMaxMapCount
-notify 'Changing maximum number of virtual memory allocations a process can make to 2147483642'
-echo 'vm.max_map_count=2147483642' >> /etc/sysctl.d/99-sysctl.conf
+vm_max_map_count=2147483642
+notify "Changing maximum number of virtual memory allocations a process can make to $vm_max_map_count"
+echo "vm.max_map_count=$vm_max_map_count" >> /etc/sysctl.d/99-sysctl.conf
 
+notify 'Locking root account...'
+passwd -l root
 notify "Rebooting system.. you can login as $username now."
-notify 'NOTE: PLEASE REMEMBER TO CHANGE THE ROOT PASSWORD ONCE YOU LOGIN!'
 read -p 'Do you want to reboot the system? [y/n] ' rebootpc
 
 notify "Removing all files from installation directory: '$INSTALL_DIR'"
