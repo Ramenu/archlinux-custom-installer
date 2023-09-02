@@ -51,7 +51,7 @@ if [[ ! -f './.git-credentials' ]]; then
 fi
 success 'Found ./.git-credentials'
 
-read -p "Before continuing, this installation script assumes you've created your /boot and / partitions.\
+read -p "Before continuing, this installation script assumes you've created your /efi and / partitions.\
 It also assumes that the machine has functional internet access, and that secure boot is disabled \
 (you can re-enable it after the installation). If you've done all of these things, \
 type 'y' to continue with the installation [y/n] " confirm_install
@@ -154,7 +154,12 @@ arch-chroot /mnt /bin/bash -c 'sbctl create-keys'
 arch-chroot /mnt /bin/bash -c 'sbctl generate-bundles --sign'
 arch-chroot /mnt /bin/bash -c 'sbctl enroll-keys --microsoft'
 
-part_num="${efi: -1}"
+if [[ "$efi" =~ ([0-9]+)$ ]]; then
+	part_num="${BASH_REMATCH[1]}"
+else
+	echo "error: failed to extract partition number from $efi"
+	exit 1
+fi
 
 notify 'Creating boot menu entry..'
 # NVMEs have different naming conventions than the other SSDs and HDDs
