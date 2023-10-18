@@ -143,7 +143,7 @@ notify 'Enabling NetworkManager to run at startup'; systemctl enable NetworkMana
 notify 'Enabling audit framework daemon to run at startup'; systemctl enable auditd.service
 
 notify 'Installing additional AUR packages (it is highly recommended that you take a look at all the PKGBUILDs before installing!)'
-sudo -u "$username" yay -Syu --color always --needed visual-studio-code-bin searxng-git candy-icons-git quikc-git
+sudo -u "$username" yay -Syu --color always --needed visual-studio-code-bin candy-icons-git quikc-git
 
 cd $INSTALL_DIR
 chown "$username":"$username" ./dotfiles.tar.gz
@@ -190,9 +190,6 @@ cd /tmp
 sudo -u "$username" git clone https://github.com/Ramenu/Programming-Language-Tier-List
 cd ./Programming-Language-Tier-List
 mv ./81679.jpg /home/"$username"/Pictures/wallpaper.jpg
-
-notify 'Setting SearXNG to run at startup..'
-sudo -u "$username" systemctl --user enable searxng
 
 notify 'Allowing X to run with standard user privileges..'
 echo 'needs_root_rights = no' > /etc/X11/Xwrapper.config
