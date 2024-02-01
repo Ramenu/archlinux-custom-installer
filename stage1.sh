@@ -150,6 +150,8 @@ else
 	echo 'error: Unknown CPU vendor. Aborting installation..'
 	exit 1
 fi
+
+notify 'Setting up Secure Boot..'
 arch-chroot /mnt /bin/bash -c 'sbctl create-keys'
 arch-chroot /mnt /bin/bash -c 'sbctl generate-bundles --sign'
 arch-chroot /mnt /bin/bash -c 'sbctl enroll-keys --microsoft'
