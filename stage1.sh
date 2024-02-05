@@ -98,6 +98,9 @@ cpu_vendor=$(lscpu | grep 'Vendor ID:' | awk '{print $3}')
 if [[ "$cpu_vendor" == 'AuthenticAMD' ]]; then
 	notify 'Detected CPU vendor: AMD'
 	microcode_pkg='amd-ucode'
+elif [[ "$cpu_vendor" == 'GenuineIntel' ]]; then
+	notify 'Detected CPU vendor: Intel'
+	microcode_pkg='intel-ucode'
 else
 	echo 'error: unrecognized CPU vendor. Aborting installation..'
 	exit 1
