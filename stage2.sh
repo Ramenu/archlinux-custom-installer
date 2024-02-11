@@ -138,7 +138,7 @@ install_package  mesa xorg xfce4 opensnitch \
 				 xfce4-screensaver xarchiver \
 				 zathura-pdf-poppler noto-fonts noto-fonts-cjk \
 				 noto-fonts-emoji urlwatch gvfs-mtp kernel-modules-hook \
-				 gnupg cowsay
+				 gnupg cowsay alacritty dmenu
 
 notify 'Enabling opensnitchd to run at startup'; systemctl enable opensnitchd.service
 notify 'Enabling NetworkManager to run at startup'; systemctl enable NetworkManager.service
