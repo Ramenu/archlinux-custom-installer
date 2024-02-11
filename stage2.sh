@@ -86,6 +86,7 @@ notify '     -> Setting up splash screen..'
 
 notify "Installing packages from group 'base-devel'.."; install_package base-devel
 notify 'Installing git..'; install_package git
+notify 'Installing less..'; install_package less
 
 notify "Adding user '$username' as a sudoer"
 echo '%wheel ALL=(ALL:ALL) ALL' >> /etc/sudoers
@@ -134,7 +135,7 @@ install_package  mesa xorg xfce4 opensnitch \
 				 python-qt-material python-pyasn zsh \
 				 wireguard-tools xfce4-taskmanager xfce4-pulseaudio-plugin \
 				 tmux xdg-user-dirs audit bubblewrap \
-				 adwaita-qt5 xfce4-screensaver xarchiver \
+				 xfce4-screensaver xarchiver \
 				 zathura-pdf-poppler noto-fonts noto-fonts-cjk \
 				 noto-fonts-emoji urlwatch gvfs-mtp kernel-modules-hook \
 				 gnupg
@@ -144,7 +145,7 @@ notify 'Enabling NetworkManager to run at startup'; systemctl enable NetworkMana
 notify 'Enabling audit framework daemon to run at startup'; systemctl enable auditd.service
 
 notify 'Installing additional AUR packages (it is highly recommended that you take a look at all the PKGBUILDs before installing!)'
-sudo -u "$username" yay -S --color always --needed candy-icons-git quikc-git
+sudo -u "$username" yay -S --color always --needed adwaita-qt5-git candy-icons-git quikc-git
 
 cd $INSTALL_DIR
 chown "$username":"$username" ./dotfiles.tar.gz
