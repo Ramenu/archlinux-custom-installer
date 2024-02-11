@@ -94,7 +94,7 @@ if [[ $(blkid "$enc") != *"UUID=\"${root_uuid}\""* ]]; then
 fi
 
 # Check CPU vendor
-cpu_vendor=$(lscpu | grep 'Vendor ID:' | awk '{print $3}')
+cpu_vendor=$(lscpu | grep '^Vendor ID:' | awk '{print $3}')
 if [[ "$cpu_vendor" == 'AuthenticAMD' ]]; then
 	notify 'Detected CPU vendor: AMD'
 	microcode_pkg='amd-ucode'
