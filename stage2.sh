@@ -144,7 +144,7 @@ notify 'Enabling NetworkManager to run at startup'; systemctl enable NetworkMana
 notify 'Enabling audit framework daemon to run at startup'; systemctl enable auditd.service
 
 notify 'Installing additional AUR packages (it is highly recommended that you take a look at all the PKGBUILDs before installing!)'
-sudo -u "$username" yay -Syu --color always --needed visual-studio-code-bin candy-icons-git quikc-git
+sudo -u "$username" yay -S --color always --needed candy-icons-git quikc-git
 
 cd $INSTALL_DIR
 chown "$username":"$username" ./dotfiles.tar.gz
